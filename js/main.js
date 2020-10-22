@@ -13,22 +13,23 @@
     jQuery(document).ready(function($) {
 
         // TODO Find a better way to do this in one pass
-        $('ul li[data-id]').each(function() {
-            addCheckbox(this);
+        $('ul li li').each(function(index) {
+            if ($(this).attr('data-id')) {
+                addCheckbox(this);
+            }
         });
-
+        $('ul li').each(function(index) {
+            if ($(this).attr('data-id')) {
+                addCheckbox(this);
+            }
+        });
 
         populateProfiles();
 
         $('input[type="checkbox"]').click(function() {
             var id = $(this).attr('id');
             var isChecked = profiles[profilesKey][profiles.current].checklistData[id] = $(this).prop('checked');
-            //_gaq.push(['_trackEvent', 'Checkbox', (isChecked ? 'Check' : 'Uncheck'), id]);
-            if(isChecked === true) {
-                $('[data-id="'+id+'"] label').addClass('completed')
-            } else {
-                $('[data-id="'+id+'"] label').removeClass('completed');
-            }
+            _gaq.push(['_trackEvent', 'Checkbox', (isChecked ? 'Check' : 'Uncheck'), id]);
             $(this).parent().parent().find('li > label > input[type="checkbox"]').each(function() {
                 var id = $(this).attr('id');
                 profiles[profilesKey][profiles.current].checklistData[id] = isChecked;
@@ -42,7 +43,7 @@
             profiles.current = $(this).val();
             $.jStorage.set(profilesKey, profiles);
             populateChecklists();
-            //_gaq.push(['_trackEvent', 'Profile', 'Change', profiles.current]);
+            _gaq.push(['_trackEvent', 'Profile', 'Change', profiles.current]);
         });
 
         $('#profileAdd').click(function() {
@@ -52,7 +53,7 @@
             $('#profileModalUpdate').hide();
             $('#profileModalDelete').hide();
             $('#profileModal').modal('show');
-            //_gaq.push(['_trackEvent', 'Profile', 'Add']);
+            _gaq.push(['_trackEvent', 'Profile', 'Add']);
         });
 
         $('#profileEdit').click(function() {
@@ -66,7 +67,7 @@
                 $('#profileModalDelete').hide();
             }
             $('#profileModal').modal('show');
-            //_gaq.push(['_trackEvent', 'Profile', 'Edit', profiles.current]);
+            _gaq.push(['_trackEvent', 'Profile', 'Edit', profiles.current]);
         });
 
         $('#profileModalAdd').click(function(event) {
@@ -81,7 +82,8 @@
                 populateProfiles();
                 populateChecklists();
             }
-            //_gaq.push(['_trackEvent', 'Profile', 'Create', profile]);
+            $('#profileModal').modal('hide');
+            _gaq.push(['_trackEvent', 'Profile', 'Create', profile]);
         });
 
         $('#profileModalUpdate').click(function(event) {
@@ -95,7 +97,7 @@
                 populateProfiles();
             }
             $('#profileModal').modal('hide');
-            //_gaq.push(['_trackEvent', 'Profile', 'Update', profile]);
+            _gaq.push(['_trackEvent', 'Profile', 'Update', profile]);
         });
 
         $('#profileModalDelete').click(function(event) {
@@ -112,20 +114,13 @@
             populateProfiles();
             populateChecklists();
             $('#profileModal').modal('hide');
-            //_gaq.push(['_trackEvent', 'Profile', 'Delete']);
+            _gaq.push(['_trackEvent', 'Profile', 'Delete']);
         });
 
-        $("#toggleHideCompleted").change(function() {
-            var hidden = !$(this).is(':checked');
-
-            $('body').toggleClass('hide_completed', !hidden);
-        });
-
-        $('[data-item-toggle]').change(function() {
-            var type = $(this).data('item-toggle');
-            var to_hide = $(this).is(':checked');
-
-            calculateTotals();
+        $('#profileModalClose').click(function(event) {
+            event.preventDefault();
+            $('#profileModal').modal('hide');
+            _gaq.push(['_trackEvent', 'Profile', 'Close']);
         });
 
         calculateTotals();
@@ -154,16 +149,12 @@
             var overallCount = 0, overallChecked = 0;
             $('[id^="' + type + '_totals_"]').each(function(index) {
                 var regex = new RegExp(type + '_totals_(.*)');
-                var regexFilter = new RegExp('^playthrough_(.*)');
                 var i = parseInt(this.id.match(regex)[1]);
                 var count = 0, checked = 0;
                 for (var j = 1; ; j++) {
                     var checkbox = $('#' + type + '_' + i + '_' + j);
                     if (checkbox.length == 0) {
                         break;
-                    }
-                    if(checkbox.is(':hidden') && checkbox.prop('id').match(regexFilter) && canFilter(checkbox.closest('li'))) {
-                        continue;
                     }
                     count++;
                     overallCount++;
@@ -172,45 +163,32 @@
                         overallChecked++;
                     }
                 }
-                if (checked === count) {
-                    this.innerHTML = $('#' + type + '_nav_totals_' + i)[0].innerHTML = 'DONE';
+                if (checked == count) {
+                    this.innerHTML = $('#' + type + '_nav_totals_' + i)[0].innerHTML = '[DONE]';
                     $(this).removeClass('in_progress').addClass('done');
                     $($('#' + type + '_nav_totals_' + i)[0]).removeClass('in_progress').addClass('done');
                 } else {
-                    this.innerHTML = $('#' + type + '_nav_totals_' + i)[0].innerHTML = checked + '/' + count;
+                    this.innerHTML = $('#' + type + '_nav_totals_' + i)[0].innerHTML = '[' + checked + '/' + count + ']';
                     $(this).removeClass('done').addClass('in_progress');
                     $($('#' + type + '_nav_totals_' + i)[0]).removeClass('done').addClass('in_progress');
                 }
             });
-            if (overallChecked === overallCount) {
-                this.innerHTML = 'DONE';
+            if (overallChecked == overallCount) {
+                this.innerHTML = '[DONE]';
                 $(this).removeClass('in_progress').addClass('done');
             } else {
-                this.innerHTML = overallChecked + '/' + overallCount;
+                this.innerHTML = '[' + overallChecked + '/' + overallCount + ']';
                 $(this).removeClass('done').addClass('in_progress');
             }
         });
     }
 
     function addCheckbox(el) {
-        var $el = $(el);
-        // assuming all content lies on the first line
-        var content = $el.html().split('\n')[0];
-        var sublists = $el.children('ul');
-
-        content =
-            '<div class="checkbox">' +
-                '<label>' +
-                    '<input type="checkbox" id="' + $el.attr('data-id') + '">' +
-                    '<span class="item_content">' + content + '</span>' +
-                '</label>' +
-            '</div>';
-
-        $el.html(content).append(sublists);
-
-        if (profiles[profilesKey][profiles.current].checklistData[$el.attr('data-id')] === true) {
-            $('#' + $el.attr('data-id')).prop('checked', true);
-            $('label', $el).addClass('completed');
+        var lines = $(el).html().split('\n');
+        lines[0] = '<label class="checkbox"><input type="checkbox" id="' + $(el).attr('data-id') + '">' + lines[0] + '</label>';
+        $(el).html(lines.join('\n'));
+        if (profiles[profilesKey][profiles.current].checklistData[$(el).attr('data-id')] == true) {
+            $('#' + $(el).attr('data-id')).prop('checked', true);
         }
     }
 
@@ -226,29 +204,6 @@
         for (var profile in profiles[profilesKey]) {
             return profile;
         }
-    }
-
-    function canFilter(entry) {
-        if (!entry.attr('class')) {
-            return false;
-        }
-        var classList = entry.attr('class').split(/\s+/);
-        var foundMatch = 0;
-        for (var i = 0; i < classList.length; i++) {
-            if (!classList[i].match(/^f_(.*)/)) {
-                continue;
-            }
-            if(classList[i] in profiles[profilesKey][profiles.current].hidden_categories) {
-                if(!profiles[profilesKey][profiles.current].hidden_categories[classList[i]]) {
-                    return false;
-                }
-                foundMatch = 1;
-            }
-        }
-        if (foundMatch === 0) {
-            return false;
-        }
-        return true;
     }
 
 })( jQuery );
