@@ -15,13 +15,7 @@
         // TODO Find a better way to do this in one pass
         $('ul li[data-id]').each(function() {
             addCheckbox(this);
-           }
         });
-        /*$('ul li').each(function(index) {
-            if ($(this).attr('data-id')) {
-                addCheckbox(this);
-            }
-        });*/
 
 
         populateProfiles();
