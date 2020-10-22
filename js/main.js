@@ -16,6 +16,12 @@
         $('ul li[data-id]').each(function() {
             addCheckbox(this);
         });
+        $('ul li').each(function(index) {
+            if ($(this).attr('data-id')) {
+                addCheckbox(this);
+            }
+        });
+
 
         populateProfiles();
 
